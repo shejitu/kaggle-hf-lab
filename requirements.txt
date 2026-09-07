@@ -1,0 +1,2 @@
+# Kaggle 官方镜像已自带 torch / transformers，这里写上只是确保依赖安装 cell 不报错并锁定最低版本
+transformers>=4.40
