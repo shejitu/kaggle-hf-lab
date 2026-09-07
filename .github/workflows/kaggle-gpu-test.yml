@@ -1,0 +1,38 @@
+name: Kaggle GPU 模型测试
+
+on:
+  # 手动触发：可指定要测试的 HF 模型和输入文本
+  workflow_dispatch:
+    inputs:
+      model_id:
+        description: 'Hugging Face 模型 ID'
+        required: true
+        default: 'distilbert-base-uncased-finetuned-sst-2-english'
+      prompt_text:
+        description: '测试输入文本'
+        required: true
+        default: 'I love this movie, it is fantastic!'
+  # push 到 main 也会用默认模型自动跑一次
+  push:
+    branches: [main]
+
+jobs:
+  run-on-kaggle-gpu:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: 在 Kaggle GPU 上运行 HF 模型测试
+        uses: KevKibe/kaggle-script-action@v1.0.5
+        with:
+          username: ${{ secrets.KAGGLE_USERNAME }}
+          key: ${{ secrets.KAGGLE_KEY }}
+          title: "HF Model GPU Test"
+          # 注意：custom_script 会被拼进 ipynb JSON，内部只能用单引号，不能用双引号
+          custom_script: |
+            python hf_model_test.py --model '${{ github.event.inputs.model_id || 'distilbert-base-uncased-finetuned-sst-2-english' }}' --text '${{ github.event.inputs.prompt_text || 'I love this movie, it is fantastic!' }}'
+          enable_internet: true
+          enable_gpu: true
+          enable_tpu: false
+          sleep_time: 30
