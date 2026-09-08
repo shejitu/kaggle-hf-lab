@@ -1,21 +1,41 @@
-name: IndexTTS 2.5 Kaggle T4 测试
+name: IndexTTS 2.5 Kaggle T4（合成/Gradio公网 双模式）
 
 on:
   workflow_dispatch:
     inputs:
-      text:
-        description: '要合成的文本'
+      mode:
+        description: '运行模式: synth=合成回传WAV / serve=Gradio公网自助页'
         required: true
+        default: 'serve'
+        type: choice
+        options:
+          - serve
+          - synth
+      text:
+        description: 'synth 模式：要合成的文本'
+        required: false
         default: '你好，我是通过 GitHub Actions 在 Kaggle T4 显卡上运行的 IndexTTS 语音合成。'
       lang:
-        description: '语言代码'
-        required: true
+        description: '语言代码 zh/en'
+        required: false
         default: 'zh'
+        type: choice
+        options:
+          - zh
+          - en
+      ref_audio_url:
+        description: 'synth 模式：参考音色 URL（sample=官方示例人声）'
+        required: false
+        default: 'sample'
+      hours:
+        description: 'serve 模式：存活小时数（0=一直跑到 Kaggle 上限）'
+        required: false
+        default: '3'
 
 jobs:
   run-indextts-t4:
     runs-on: ubuntu-latest
-    # IndexTTS-2.5 全流程（pip 装依赖 + 下载模型 + 推理）约 15-30 分钟
+    # synth 全流程约 15-30 分钟；serve 模式靠 max_poll_minutes 提前收尾，kernel 在 Kaggle 侧继续存活
     timeout-minutes: 60
     steps:
       - name: Checkout Repository
@@ -29,12 +49,15 @@ jobs:
           title: "IndexTTS 25 T4 Test"
           # 注意：custom_script 会被拼进 ipynb JSON，内部只能用单引号，且保持单行
           # index-tts 要求 Python <3.12，Kaggle 镜像是 3.12 → 用 uv 建 3.11 venv 再装再跑
+          # 重文件全在 /kaggle/tmp，只让成品进 /kaggle/working（避免 output 过大拖垮回收）
           custom_script: |
-            git clone --depth 1 https://github.com/index-tts/index-tts && pip install -q uv && uv venv .venv --python 3.11 && uv pip install --python .venv/bin/python ./index-tts && .venv/bin/python indextts_t4_test.py --text '${{ github.event.inputs.text || '你好，我是通过 GitHub Actions 在 Kaggle T4 显卡上运行的 IndexTTS 语音合成。' }}' --lang '${{ github.event.inputs.lang || 'zh' }}'
+            mkdir -p /kaggle/tmp && cd /kaggle/tmp && git clone --depth 1 https://github.com/index-tts/index-tts && pip install -q uv && uv venv .venv --python 3.11 && uv pip install --python .venv/bin/python ./index-tts && cp /kaggle/working/kaggle-hf-lab/indextts_run.py . && case '${{ github.event.inputs.mode || 'serve' }}' in serve) .venv/bin/python indextts_run.py --mode serve --hours '${{ github.event.inputs.hours || '3' }}';; *) .venv/bin/python indextts_run.py --mode synth --ref '${{ github.event.inputs.ref_audio_url || 'sample' }}' --text '${{ github.event.inputs.text }}' --lang '${{ github.event.inputs.lang || 'zh' }}';; esac
           enable_internet: true
           enable_gpu: true
           enable_tpu: false
           # T4：预装新 PyTorch 不支持 P100(sm_60)，T4(sm_75) 正常
           accelerator: nvidiaTeslaT4
           sleep_time: 60
-          max_poll_minutes: 45
+          # serve 模式会一直运行，10 分钟后收尾（kernel 在 Kaggle 侧继续存活，URL 从 kernel 日志取）；
+          # synth 模式 45 分钟足够
+          max_poll_minutes: ${{ github.event.inputs.mode == 'synth' && 45 || 10 }}
