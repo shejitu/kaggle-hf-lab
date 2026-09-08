@@ -19,12 +19,14 @@ on:
 jobs:
   run-on-kaggle-gpu:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
       - name: 在 Kaggle GPU 上运行 HF 模型测试
-        uses: KevKibe/kaggle-script-action@v1.0.5
+        # 使用自己的 fork：增加了 accelerator（可选 T4）与 max_poll_minutes（轮询上限）参数
+        uses: shejitu/kaggle-script-action@main
         with:
           username: ${{ secrets.KAGGLE_USERNAME }}
           key: ${{ secrets.KAGGLE_KEY }}
@@ -35,4 +37,9 @@ jobs:
           enable_internet: true
           enable_gpu: true
           enable_tpu: false
+          # 指定 T4：Kaggle 预装的新版 PyTorch 不含 P100(sm_60) 的 CUDA 内核，会报
+          # "CUDA error: no kernel image is available"，T4(sm_75) 正常支持
+          accelerator: nvidiaTeslaT4
           sleep_time: 30
+          # 轮询上限：超时后自动拉 kernel 日志判断真实执行状态，避免空转 6 小时
+          max_poll_minutes: 20
