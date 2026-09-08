@@ -51,7 +51,7 @@ jobs:
           # index-tts 要求 Python <3.12，Kaggle 镜像是 3.12 → 用 uv 建 3.11 venv 再装再跑
           # 重文件全在 /kaggle/tmp，只让成品进 /kaggle/working（避免 output 过大拖垮回收）
           custom_script: |
-            mkdir -p /kaggle/tmp && cd /kaggle/tmp && git clone --depth 1 https://github.com/index-tts/index-tts && pip install -q uv && uv venv .venv --python 3.11 && uv pip install --python .venv/bin/python ./index-tts && cp /kaggle/working/kaggle-hf-lab/indextts_run.py . && case '${{ github.event.inputs.mode || 'serve' }}' in serve) .venv/bin/python indextts_run.py --mode serve --hours '${{ github.event.inputs.hours || '3' }}';; *) .venv/bin/python indextts_run.py --mode synth --ref '${{ github.event.inputs.ref_audio_url || 'sample' }}' --text '${{ github.event.inputs.text }}' --lang '${{ github.event.inputs.lang || 'zh' }}';; esac
+            mkdir -p /kaggle/tmp && cd /kaggle/tmp && git clone --depth 1 https://github.com/index-tts/index-tts && pip install -q uv && uv venv .venv --python 3.11 && uv pip install --python .venv/bin/python ./index-tts gradio && cp /kaggle/working/kaggle-hf-lab/indextts_run.py . && case '${{ github.event.inputs.mode || 'serve' }}' in serve) .venv/bin/python indextts_run.py --mode serve --hours '${{ github.event.inputs.hours || '3' }}';; *) .venv/bin/python indextts_run.py --mode synth --ref '${{ github.event.inputs.ref_audio_url || 'sample' }}' --text '${{ github.event.inputs.text }}' --lang '${{ github.event.inputs.lang || 'zh' }}';; esac
           enable_internet: true
           enable_gpu: true
           enable_tpu: false
