@@ -1,0 +1,39 @@
+name: IndexTTS 2.5 Kaggle T4 测试
+
+on:
+  workflow_dispatch:
+    inputs:
+      text:
+        description: '要合成的文本'
+        required: true
+        default: '你好，我是通过 GitHub Actions 在 Kaggle T4 显卡上运行的 IndexTTS 语音合成。'
+      lang:
+        description: '语言代码'
+        required: true
+        default: 'zh'
+
+jobs:
+  run-indextts-t4:
+    runs-on: ubuntu-latest
+    # IndexTTS-2.5 全流程（pip 装依赖 + 下载模型 + 推理）约 15-30 分钟
+    timeout-minutes: 60
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: 在 Kaggle T4 上运行 IndexTTS 2.5
+        uses: shejitu/kaggle-script-action@main
+        with:
+          username: ${{ secrets.KAGGLE_USERNAME }}
+          key: ${{ secrets.KAGGLE_KEY }}
+          title: "IndexTTS 25 T4 Test"
+          # 注意：custom_script 会被拼进 ipynb JSON，内部只能用单引号，且保持单行
+          custom_script: |
+            git clone --depth 1 https://github.com/index-tts/index-tts && pip install ./index-tts && python indextts_t4_test.py --text '${{ github.event.inputs.text || '你好，我是通过 GitHub Actions 在 Kaggle T4 显卡上运行的 IndexTTS 语音合成。' }}' --lang '${{ github.event.inputs.lang || 'zh' }}'
+          enable_internet: true
+          enable_gpu: true
+          enable_tpu: false
+          # T4：预装新 PyTorch 不支持 P100(sm_60)，T4(sm_75) 正常
+          accelerator: nvidiaTeslaT4
+          sleep_time: 60
+          max_poll_minutes: 45
