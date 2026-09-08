@@ -12,9 +12,9 @@ on:
         description: '测试输入文本'
         required: true
         default: 'I love this movie, it is fantastic!'
-  # push 到 main 也会用默认模型自动跑一次
-  push:
-    branches: [main]
+  # push 不再自动跑：避免与手动 dispatch 竞争 Kaggle GPU 会话名额（同时最多 2 个）
+  # push:
+  #   branches: [main]
 
 jobs:
   run-on-kaggle-gpu:
